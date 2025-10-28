@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  asterisk-sip:
+    build: .
+    container_name: asterisk-sip-server
+    hostname: asterisk-sip
+    restart: unless-stopped
+    
+    ports:
+      # Puerto SIP
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      # Rango RTP para media
+      - "10000-10100:10000-10100/udp"
+      # Puerto IAX2 (opcional)
+      - "4569:4569/udp"
+    
+    volumes:
+      # Persistencia de logs
+      - asterisk_logs:/var/log/asterisk
+      # Persistencia de spool
+      - asterisk_spool:/var/spool/asterisk
+      # Configuración (para cambios dinámicos)
+      - ./config:/etc/asterisk:ro
+    
+    environment:
+      - TZ=America/Lima
+    
+    networks:
+      - sip_network
+    
+    healthcheck:
+      test: ["CMD", "asterisk", "-rx", "core show version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  web-admin:
+    build: ./web-admin
+    container_name: asterisk-web-admin
+    hostname: web-admin
+    restart: unless-stopped
+    
+    ports:
+      - "3000:3000"
+    
+    volumes:
+      - ./config:/app/config:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    
+    environment:
+      - NODE_ENV=production
+      - ASTERISK_CONTAINER=asterisk-sip-server
+    
+    depends_on:
+      - asterisk-sip
+    
+    networks:
+      - sip_network
+
+volumes:
+  asterisk_logs:
+    driver: local
+  asterisk_spool:
+    driver: local
+
+networks:
+  sip_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16

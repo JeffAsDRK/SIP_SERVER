@@ -1,0 +1,271 @@
+<!-- Dashboard Stats -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-stat h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="h5 mb-0 font-weight-bold">
+                            <span id="total-users">-</span>
+                        </div>
+                        <div class="text-xs">Total Usuarios</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-stat-2 h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="h5 mb-0 font-weight-bold">
+                            <span id="online-users">-</span>
+                        </div>
+                        <div class="text-xs">Usuarios Online</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-user-check fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-stat-3 h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="h5 mb-0 font-weight-bold">
+                            <span id="server-uptime">-</span>
+                        </div>
+                        <div class="text-xs">Estado Servidor</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-server fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-stat-4 h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="h5 mb-0 font-weight-bold">
+                            <span id="active-calls">0</span>
+                        </div>
+                        <div class="text-xs">Llamadas Activas</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-phone fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bolt"></i> Acciones Rápidas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-primary w-100" onclick="reloadServer()">
+                            <i class="fas fa-sync"></i> Recargar Servidor
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="/users" class="btn btn-success w-100">
+                            <i class="fas fa-user-plus"></i> Añadir Usuario
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="/monitoring" class="btn btn-info w-100">
+                            <i class="fas fa-chart-line"></i> Ver Monitoreo
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-warning w-100" onclick="exportConfig()">
+                            <i class="fas fa-download"></i> Exportar Config
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Connected Users -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-wifi"></i> Usuarios Conectados
+                </h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="refreshPeers()">
+                    <i class="fas fa-refresh"></i> Actualizar
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="peers-table">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Host/IP</th>
+                                <th>Puerto</th>
+                                <th>Estado</th>
+                                <th>Última Conexión</th>
+                            </tr>
+                        </thead>
+                        <tbody id="peers-tbody">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando usuarios...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let totalUsers = 0;
+let onlineUsers = 0;
+
+// Actualizar datos del dashboard
+socket.on('statusUpdate', (data) => {
+    if (data.status) {
+        document.getElementById('server-uptime').textContent = data.status.uptime;
+    }
+    
+    if (data.peers) {
+        updatePeersTable(data.peers);
+        onlineUsers = data.peers.filter(peer => peer.status.toLowerCase().includes('ok')).length;
+        document.getElementById('online-users').textContent = onlineUsers;
+    }
+});
+
+function updatePeersTable(peers) {
+    const tbody = document.getElementById('peers-tbody');
+    
+    if (peers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay usuarios conectados</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = peers.map(peer => {
+        const statusClass = peer.status.toLowerCase().includes('ok') ? 'success' : 'danger';
+        const statusIcon = peer.status.toLowerCase().includes('ok') ? 'check-circle' : 'times-circle';
+        
+        return `
+            <tr>
+                <td><strong>${peer.name}</strong></td>
+                <td>${peer.host}</td>
+                <td>${peer.port}</td>
+                <td><span class="badge bg-${statusClass}"><i class="fas fa-${statusIcon}"></i> ${peer.status}</span></td>
+                <td><small>${peer.lastSeen}</small></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function reloadServer() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recargando...';
+    
+    fetch('/api/reload', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', 'Servidor recargado exitosamente');
+            } else {
+                showAlert('danger', data.error || 'Error recargando servidor');
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Error de conexión: ' + error.message);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync"></i> Recargar Servidor';
+            socket.emit('requestStatus');
+        });
+}
+
+function refreshPeers() {
+    socket.emit('requestStatus');
+    showAlert('info', 'Actualizando lista de usuarios...');
+}
+
+function exportConfig() {
+    showAlert('info', 'Función de exportación en desarrollo');
+}
+
+function showAlert(type, message) {
+    const alertsContainer = document.getElementById('alerts-container') || createAlertsContainer();
+    const alertId = 'alert-' + Date.now();
+    
+    const alertHTML = `
+        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    alertsContainer.innerHTML = alertHTML;
+    
+    setTimeout(() => {
+        const alert = document.getElementById(alertId);
+        if (alert) alert.remove();
+    }, 5000);
+}
+
+function createAlertsContainer() {
+    const container = document.createElement('div');
+    container.id = 'alerts-container';
+    container.className = 'fixed-top p-3';
+    container.style.zIndex = '9999';
+    container.style.pointerEvents = 'none';
+    container.style.top = '20px';
+    
+    const alerts = container.children;
+    for (let alert of alerts) {
+        alert.style.pointerEvents = 'auto';
+    }
+    
+    document.body.appendChild(container);
+    return container;
+}
+
+// Cargar usuarios totales
+fetch('/api/users')
+    .then(response => response.json())
+    .then(users => {
+        totalUsers = users.length || 0;
+        document.getElementById('total-users').textContent = totalUsers;
+    })
+    .catch(() => {
+        document.getElementById('total-users').textContent = '0';
+    });
+</script>

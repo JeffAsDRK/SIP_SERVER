@@ -1,0 +1,290 @@
+<% 
+var body = ` 
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Añadir Nuevo Usuario SIP</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Usuario/Extensión *</label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               placeholder="ej: 1003, 2003, 3003" required>
+                        <div class="form-text">Recomendado: 1xxx (Zoiper), 2xxx (Dahua), 3xxx (Hikvision)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Contraseña *</label>
+                        <input type="password" class="form-control" id="password" name="password" 
+                               placeholder="Contraseña segura" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="type" class="form-label">Tipo de Cliente</label>
+                        <select class="form-select" id="type" name="type">
+                            <option value="general">General/Zoiper</option>
+                            <option value="dahua">Equipo Dahua</option>
+                            <option value="hikvision">Equipo Hikvision</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descripción</label>
+                        <input type="text" class="form-control" id="description" name="description" 
+                               placeholder="ej: Recepción, Portería Principal, etc.">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="addUser()">Crear Usuario</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users List -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4><i class="fas fa-users"></i> Lista de Usuarios SIP</h4>
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                <i class="fas fa-user-plus"></i> Añadir Usuario
+            </button>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="users-table">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Tipo</th>
+                                <th>Descripción</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody">
+                            <% if (typeof users !== 'undefined' && users.length > 0) { %>
+                                <% users.forEach(user => { %>
+                                <tr id="user-<%= user.username %>">
+                                    <td><strong><%= user.username %></strong></td>
+                                    <td>
+                                        <% if (user.type === 'zoiper') { %>
+                                            <span class="badge bg-primary"><i class="fas fa-mobile-alt"></i> Zoiper</span>
+                                        <% } else if (user.type === 'dahua') { %>
+                                            <span class="badge bg-warning"><i class="fas fa-video"></i> Dahua</span>
+                                        <% } else if (user.type === 'hikvision') { %>
+                                            <span class="badge bg-info"><i class="fas fa-camera"></i> Hikvision</span>
+                                        <% } else { %>
+                                            <span class="badge bg-secondary"><i class="fas fa-phone"></i> General</span>
+                                        <% } %>
+                                    </td>
+                                    <td><%= user.description %></td>
+                                    <td>
+                                        <span class="badge bg-secondary" id="status-<%= user.username %>">
+                                            <i class="fas fa-question-circle"></i> Verificando...
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                onclick="deleteUser('<%= user.username %>')">
+                                            <i class="fas fa-trash"></i> Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        No hay usuarios configurados
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration Examples -->
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="fas fa-mobile-alt"></i> Configuración Zoiper</h6>
+            </div>
+            <div class="card-body small">
+                <strong>Configuración básica:</strong><br>
+                • Servidor: <code>IP_SERVIDOR:5060</code><br>
+                • Transporte: UDP<br>
+                • Usuario: 1001-1099<br>
+                • Contraseña: La configurada<br>
+                • Codecs: G.711, G.722
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0"><i class="fas fa-video"></i> Configuración Dahua</h6>
+            </div>
+            <div class="card-body small">
+                <strong>Configuración SIP:</strong><br>
+                • SIP Server: <code>IP_SERVIDOR:5060</code><br>
+                • User ID: 2001-2099<br>
+                • Password: La configurada<br>
+                • Transport: UDP<br>
+                • Codecs: G.711, G.726
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0"><i class="fas fa-camera"></i> Configuración Hikvision</h6>
+            </div>
+            <div class="card-body small">
+                <strong>Configuración SIP:</strong><br>
+                • SIP Server IP: <code>IP_SERVIDOR</code><br>
+                • SIP Server Port: 5060<br>
+                • SIP User ID: 3001-3099<br>
+                • Password: La configurada<br>
+                • Transport: UDP
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addUser() {
+    const form = document.getElementById('addUserForm');
+    const formData = new FormData(form);
+    const userData = Object.fromEntries(formData);
+    
+    if (!userData.username || !userData.password) {
+        showAlert('danger', 'Usuario y contraseña son requeridos');
+        return;
+    }
+    
+    // Validar formato de usuario
+    if (!/^[0-9]{4}$/.test(userData.username)) {
+        showAlert('warning', 'Se recomienda usar formato de 4 dígitos (ej: 1001, 2001, 3001)');
+    }
+    
+    const submitBtn = event.target;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+    
+    fetch('/api/users', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', 'Usuario creado exitosamente');
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showAlert('danger', data.error || 'Error creando usuario');
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 'Error de conexión: ' + error.message);
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Crear Usuario';
+    });
+}
+
+function deleteUser(username) {
+    if (!confirm('¿Estás seguro de que quieres eliminar el usuario ' + username + '?')) {
+        return;
+    }
+    
+    fetch('/api/users/' + username, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', 'Usuario eliminado exitosamente');
+            document.getElementById('user-' + username).remove();
+        } else {
+            showAlert('danger', data.error || 'Error eliminando usuario');
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 'Error de conexión: ' + error.message);
+    });
+}
+
+// Actualizar estados de usuarios
+socket.on('statusUpdate', (data) => {
+    if (data.peers) {
+        // Resetear todos los estados
+        document.querySelectorAll('[id^="status-"]').forEach(element => {
+            element.className = 'badge bg-secondary';
+            element.innerHTML = '<i class="fas fa-times-circle"></i> Offline';
+        });
+        
+        // Actualizar usuarios online
+        data.peers.forEach(peer => {
+            const statusElement = document.getElementById('status-' + peer.name);
+            if (statusElement) {
+                const isOnline = peer.status.toLowerCase().includes('ok');
+                statusElement.className = 'badge bg-' + (isOnline ? 'success' : 'danger');
+                statusElement.innerHTML = '<i class="fas fa-' + (isOnline ? 'check-circle' : 'times-circle') + '"></i> ' + 
+                                        (isOnline ? 'Online' : 'Offline');
+            }
+        });
+    }
+});
+
+function showAlert(type, message) {
+    const alertsContainer = document.getElementById('alerts-container') || createAlertsContainer();
+    const alertId = 'alert-' + Date.now();
+    
+    const alertHTML = `
+        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    alertsContainer.innerHTML = alertHTML;
+    
+    setTimeout(() => {
+        const alert = document.getElementById(alertId);
+        if (alert) alert.remove();
+    }, 5000);
+}
+
+function createAlertsContainer() {
+    const container = document.createElement('div');
+    container.id = 'alerts-container';
+    container.className = 'fixed-top p-3';
+    container.style.zIndex = '9999';
+    container.style.pointerEvents = 'none';
+    container.style.top = '20px';
+    
+    document.body.appendChild(container);
+    return container;
+}
+</script>
+`;
+%>
+<%- include('layout', { body: body }) %>
